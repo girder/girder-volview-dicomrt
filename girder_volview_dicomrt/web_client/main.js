@@ -1,1 +1,2 @@
-console.log('Loaded VolView DICOM-RT!');
+// import modules for side effects
+import "./views/itemPage";

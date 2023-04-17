@@ -1,9 +1,15 @@
 import { restRequest } from "@girder/core/rest";
 
-export function importDicomRT(model) {
+function run(item, operation) {
   restRequest({
-    type: "GET",
-    url: `item/${model.id}/files?limit=0`,
+    type: "POST",
+    url: `/slicer_cli_web/ghcr.io_girder_girder-volview-dicomrt_worker-volview-dicomrt_latest/volview_dicomrt/run`,
+    data: {
+      operation,
+      item,
+      girderApiUrl: '',
+      girderToken: '',
+    },
     error: null,
   })
     .done((resp) => {
@@ -19,21 +25,10 @@ export function importDicomRT(model) {
     });
 }
 
+export function importDicomRT(model) {
+  run(model.id, "import");
+}
+
 export function exportDicomRT(model) {
-  restRequest({
-    type: "GET",
-    url: `item/${model.id}/files?limit=0`,
-    error: null,
-  })
-    .done((resp) => {
-      console.log("done");
-    })
-    .fail((resp) => {
-      events.trigger("g:alert", {
-        icon: "cancel",
-        text: "Could not check files to open in VolView",
-        type: "danger",
-        timeout: 4000,
-      });
-    });
+  run(model.id, "export");
 }

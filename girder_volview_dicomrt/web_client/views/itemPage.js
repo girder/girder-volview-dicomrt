@@ -6,11 +6,11 @@ wrap(ItemView, "render", function (render) {
   this.once("g:rendered", function () {
     this.$el.find(".g-item-header .btn-group").before(
       `
-      <a class="btn btn-sm btn-primary export-dicomrt" style="margin-left: 10px" role="button">
-        <i class="icon-link-ext"></i>Export DICOM-RT
+      <a class="btn btn-sm btn-primary export-dicomrt" style="margin-left: 10px" role="button" title="Assumes a session.volview.zip file exists on this item">
+        Export DICOM-RT
       </a>
-      <a class="btn btn-sm btn-primary import-dicomrt" style="margin-left: 10px" role="button">
-        <i class="icon-link-ext"></i>Import DICOM-RT
+      <a class="btn btn-sm btn-primary import-dicomrt" style="margin-left: 10px" role="button" title="Assumes rt.dcm and session.volview.zip files exist on this item">
+        Import DICOM-RT
       </a>
       `
     );

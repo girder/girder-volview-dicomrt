@@ -90,7 +90,7 @@ def main(args):
         p.message('Finding the DICOM series directory ...')
         p.progress(step/steps)
         step += 1
-        dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and f.split('.')[-1] in ['dcm', 'DCM', 'dicom', 'DICOM'] and not f.endswith('/rt.dcm'))
+        dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and os.path.splitext(f)[1] in ['', 'dcm', 'DCM', 'dicom', 'DICOM'] and not f.endswith('/rt.dcm'))
         if (len(dicom_files) == 0):
             raise("No DICOM series found")
         series_path = os.path.dirname(dicom_files[0])

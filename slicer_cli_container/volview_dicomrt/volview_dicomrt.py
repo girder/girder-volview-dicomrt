@@ -1,19 +1,17 @@
 import pprint
-
+from progress_helper import ProgressHelper
 import shutil
-import girder_client
 from ctk_cli import CLIArgumentParser
-import vtk
-import itk
 import sys
 import os
 import glob
-import numpy as np
-from rt_utils import RTStructBuilder
 import zipfile
 
 
 def vti_to_rt(series_path, vti_file, rt_file):
+    import vtk
+    import numpy as np
+    from rt_utils import RTStructBuilder
     rtstruct = RTStructBuilder.create_new(dicom_series_path=series_path)
     reader = vtk.vtkXMLImageDataReader()
     reader.SetFileName(vti_file)
@@ -29,6 +27,10 @@ def vti_to_rt(series_path, vti_file, rt_file):
 
 
 def rt_to_vti(series_path, rt_file, vti_file):
+    import itk
+    import vtk
+    import numpy as np
+    from rt_utils import RTStructBuilder
     rtstruct = RTStructBuilder.create_from(dicom_series_path=series_path, rt_struct_path=rt_file)
     names = rtstruct.get_roi_names()
 
@@ -49,86 +51,101 @@ def rt_to_vti(series_path, rt_file, vti_file):
 
 def main(args):
     print('>> parsed arguments')
+    import girder_client
     pprint.pprint(vars(args))
-    print('Initializing girder client ...')
-    gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
-    gc.setToken(args.girderToken)
-    print("... done.")
+    with ProgressHelper('DICOM-RT ' + args.operation, 'Initializing girder client ...') as p:
+        step = 0
+        steps = 9
+        p.progress(step/steps)
+        step += 1
+        gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
+        gc.setToken(args.girderToken)
 
-    print('Creating temp directory ...')
-    try:
-        shutil.rmtree('temp')
-    except:
-        pass
-    os.mkdir("temp")
-    print("... done.")
+        p.message('Creating temp directory ...')
+        p.progress(step/steps)
+        step += 1
+        try:
+            shutil.rmtree('temp')
+        except:
+            pass
+        os.mkdir("temp")
 
-    print('Downloading item ...')
-    gc.downloadItem(args.item, "temp")
-    print("... done.")
+        p.message('Downloading item ...')
+        p.progress(step/steps)
+        step += 1
+        gc.downloadItem(args.item, "temp")
 
-    item_path = os.path.join("temp", os.listdir("temp")[0])
-    session_file = os.path.join(item_path, "session.volview.zip")
+        item_path = os.path.join("temp", os.listdir("temp")[0])
+        session_file = os.path.join(item_path, "session.volview.zip")
 
-    print('Unzipping item files ...')
-    for zipped_file in glob.glob(os.path.join(item_path, '*.zip')):
-        print('Unzipping', zipped_file)
-        with zipfile.ZipFile(zipped_file, 'r') as zip_ref:
-            zip_ref.extractall(item_path)
-    print("... done.")
+        p.message('Unzipping item files ...')
+        p.progress(step/steps)
+        step += 1
+        for zipped_file in glob.glob(os.path.join(item_path, '*.zip')):
+            p.message('Unzipping ' + zipped_file)
+            with zipfile.ZipFile(zipped_file, 'r') as zip_ref:
+                zip_ref.extractall(item_path)
 
-    # Find the DICOM series directory
-    print('Finding the DICOM series directory ...')
-    dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and f.split('.')[-1] in ['dcm', 'DCM', 'dicom', 'DICOM'] and not f.endswith('/rt.dcm'))
-    if (len(dicom_files) == 0):
-        raise("No DICOM series found")
-    series_path = os.path.dirname(dicom_files[0])
-    print("... done.")
+        # Find the DICOM series directory
+        p.message('Finding the DICOM series directory ...')
+        p.progress(step/steps)
+        step += 1
+        dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and os.path.splitext(f)[1] in ['', 'dcm', 'DCM', 'dicom', 'DICOM'] and not f.endswith('/rt.dcm'))
+        if (len(dicom_files) == 0):
+            raise("No DICOM series found")
+        series_path = os.path.dirname(dicom_files[0])
 
-    # Extract VolView session file
-    print('Extracting VolView session ...')
-    with zipfile.ZipFile(session_file, 'r') as zip_ref:
-        zip_ref.extractall(os.path.join("temp", "session"))
-    print("... done.")
+        # Extract VolView session file
+        p.message('Extracting VolView session ...')
+        p.progress(step/steps)
+        step += 1
+        with zipfile.ZipFile(session_file, 'r') as zip_ref:
+            zip_ref.extractall(os.path.join("temp", "session"))
 
-    vti_file = os.path.join("temp", "session", "labels", "2.vti")
-    rt_file = os.path.join(item_path, "rt.dcm")
+        vti_file = os.path.join("temp", "session", "labels", "2.vti")
+        rt_file = os.path.join(item_path, "rt.dcm")
 
-    print('Finding relevant item files for import and export ...')
-    girder_session_file = None
-    girder_rt_file = None
-    for item_file in gc.listFile(args.item):
-        if item_file['name'] == "rt.dcm":
-            girder_rt_file = item_file
-        elif item_file['name'] == "session.volview.zip":
-            girder_session_file = item_file
-    print("... done.")
+        p.message('Finding relevant item files for import and export ...')
+        p.progress(step/steps)
+        step += 1
+        girder_session_file = None
+        girder_rt_file = None
+        for item_file in gc.listFile(args.item):
+            if item_file['name'] == "rt.dcm":
+                girder_rt_file = item_file
+            elif item_file['name'] == "session.volview.zip":
+                girder_session_file = item_file
 
-    if (args.operation == "export"):
-        print("Exporting to DICOM-RT ...")
-        vti_to_rt(series_path, vti_file, rt_file)
-        print("... done.")
-        print("Uploading result ...")
-        rt_size = os.path.getsize(rt_file)
-        with open(rt_file, mode='rb') as rt_data:
-            if girder_rt_file is None:
-                gc.uploadFile(args.item, rt_data, "rt.dcm", rt_size)
-            else:
-                gc.uploadFileContents(girder_rt_file['_id'], rt_data, rt_size)
-        print("... done.")
-    elif (args.operation == "import"):
-        print("Importing from DICOM-RT ...")
-        rt_to_vti(series_path, rt_file, vti_file)
-        print("... done.")
-        print("Uploading result ...")
-        shutil.make_archive(session_file, 'zip', os.path.join('temp', 'session'))
-        session_size = os.path.getsize(session_file)
-        with open(session_file, mode='rb') as session_data:
-            if girder_session_file is None:
-                gc.uploadFile(args.item, session_data, "session.volview.zip", session_size)
-            else:
-                gc.uploadFileContents(girder_session_file['_id'], session_data, session_size)
-        print("... done.")
+        if (args.operation == "export"):
+            p.message("Exporting to DICOM-RT ...")
+            p.progress(step/steps)
+            step += 1
+            vti_to_rt(series_path, vti_file, rt_file)
+            p.message("Uploading result ...")
+            p.progress(step/steps)
+            step += 1
+            rt_size = os.path.getsize(rt_file)
+            with open(rt_file, mode='rb') as rt_data:
+                if girder_rt_file is None:
+                    gc.uploadFile(args.item, rt_data, "rt.dcm", rt_size)
+                else:
+                    gc.uploadFileContents(girder_rt_file['_id'], rt_data, rt_size)
+        elif (args.operation == "import"):
+            p.message("Importing from DICOM-RT ...")
+            p.progress(step/steps)
+            step += 1
+            rt_to_vti(series_path, rt_file, vti_file)
+            p.message("Uploading result ...")
+            p.progress(step/steps)
+            step += 1
+            shutil.make_archive(session_file, 'zip', os.path.join('temp', 'session'))
+            session_size = os.path.getsize(session_file)
+            with open(session_file, mode='rb') as session_data:
+                if girder_session_file is None:
+                    gc.uploadFile(args.item, session_data, "session.volview.zip", session_size)
+                else:
+                    gc.uploadFileContents(girder_session_file['_id'], session_data, session_size)
+        p.progress(1)
 
 
 

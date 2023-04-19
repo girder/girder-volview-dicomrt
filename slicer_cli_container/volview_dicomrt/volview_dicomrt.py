@@ -1,19 +1,17 @@
 import pprint
 from progress_helper import ProgressHelper
 import shutil
-import girder_client
 from ctk_cli import CLIArgumentParser
-import vtk
-import itk
 import sys
 import os
 import glob
-import numpy as np
-from rt_utils import RTStructBuilder
 import zipfile
 
 
 def vti_to_rt(series_path, vti_file, rt_file):
+    import vtk
+    import numpy as np
+    from rt_utils import RTStructBuilder
     rtstruct = RTStructBuilder.create_new(dicom_series_path=series_path)
     reader = vtk.vtkXMLImageDataReader()
     reader.SetFileName(vti_file)
@@ -29,6 +27,10 @@ def vti_to_rt(series_path, vti_file, rt_file):
 
 
 def rt_to_vti(series_path, rt_file, vti_file):
+    import itk
+    import vtk
+    import numpy as np
+    from rt_utils import RTStructBuilder
     rtstruct = RTStructBuilder.create_from(dicom_series_path=series_path, rt_struct_path=rt_file)
     names = rtstruct.get_roi_names()
 
@@ -49,6 +51,7 @@ def rt_to_vti(series_path, rt_file, vti_file):
 
 def main(args):
     print('>> parsed arguments')
+    import girder_client
     pprint.pprint(vars(args))
     with ProgressHelper('DICOM-RT ' + args.operation, 'Initializing girder client ...') as p:
         step = 0

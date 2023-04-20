@@ -6,6 +6,7 @@ import sys
 import os
 import glob
 import zipfile
+from datetime import datetime
 
 
 def vti_to_rt(series_path, vti_file, rt_file):
@@ -55,7 +56,7 @@ def main(args):
     pprint.pprint(vars(args))
     with ProgressHelper('DICOM-RT ' + args.operation, 'Initializing girder client ...') as p:
         step = 0
-        steps = 9
+        steps = 10
         p.progress(step/steps)
         step += 1
         gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
@@ -76,7 +77,20 @@ def main(args):
         gc.downloadItem(args.item, "temp")
 
         item_path = os.path.join("temp", os.listdir("temp")[0])
-        session_file = os.path.join(item_path, "session.volview.zip")
+
+        p.message('Downloading VolView session file ...')
+        p.progress(step/steps)
+        step += 1
+        session_files = [f for f in gc.listFile(args.item) if f["name"].endswith("volview.zip")]
+        latest_session_file = sorted(session_files, key=lambda file: datetime.fromisoformat(file['created']))[-1]
+        session_file = os.path.join("temp", "session.volview.zip")
+        gc.downloadFile(latest_session_file["_id"], session_file)
+
+        p.message('Extracting session file ...')
+        p.progress(step/steps)
+        step += 1
+        with zipfile.ZipFile(session_file, 'r') as zip_ref:
+            zip_ref.extractall(os.path.join("temp", "session"))
 
         p.message('Unzipping item files ...')
         p.progress(step/steps)
@@ -90,17 +104,10 @@ def main(args):
         p.message('Finding the DICOM series directory ...')
         p.progress(step/steps)
         step += 1
-        dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and os.path.splitext(f)[1] in ['', 'dcm', 'DCM', 'dicom', 'DICOM'] and not f.endswith('/rt.dcm'))
+        dicom_files = list(f for f in glob.glob(os.path.join(item_path, "**"), recursive=True) if os.path.isfile(f) and os.path.splitext(f)[1] in ['', '.dcm', '.DCM', '.dicom', '.DICOM'] and not f.endswith('/rt.dcm'))
         if (len(dicom_files) == 0):
-            raise("No DICOM series found")
+            raise Exception("No DICOM series found")
         series_path = os.path.dirname(dicom_files[0])
-
-        # Extract VolView session file
-        p.message('Extracting VolView session ...')
-        p.progress(step/steps)
-        step += 1
-        with zipfile.ZipFile(session_file, 'r') as zip_ref:
-            zip_ref.extractall(os.path.join("temp", "session"))
 
         vti_file = os.path.join("temp", "session", "labels", "2.vti")
         rt_file = os.path.join(item_path, "rt.dcm")
@@ -141,10 +148,8 @@ def main(args):
             shutil.make_archive(session_file, 'zip', os.path.join('temp', 'session'))
             session_size = os.path.getsize(session_file)
             with open(session_file, mode='rb') as session_data:
-                if girder_session_file is None:
-                    gc.uploadFile(args.item, session_data, "session.volview.zip", session_size)
-                else:
-                    gc.uploadFileContents(girder_session_file['_id'], session_data, session_size)
+                gc.uploadFile(args.item, session_data, "session.volview.zip", session_size)
+        p.message("Done")
         p.progress(1)
 
 

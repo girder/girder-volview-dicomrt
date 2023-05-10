@@ -29,11 +29,12 @@ setup(
     name='girder_volview_dicomrt',
     packages=find_packages(exclude=['test', 'test.*']),
     url='https://github.com/girder/girder_volview_dicomrt',
-    version='0.1.0',
     zip_safe=False,
     entry_points={
         'girder.plugin': [
             'girder_volview_dicomrt = girder_volview_dicomrt:GirderPlugin'
         ]
-    }
+    },
+    setup_requires=['setuptools_scm'],
+    use_scm_version={'fallback_version': '0.1.0'}
 )

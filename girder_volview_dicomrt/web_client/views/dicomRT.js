@@ -1,4 +1,4 @@
-import { restRequest } from "@girder/core/rest";
+const { restRequest } = girder.rest;
 
 function run(item, operation) {
   restRequest({
@@ -16,9 +16,9 @@ function run(item, operation) {
       console.log("done");
     })
     .fail((resp) => {
-      events.trigger("g:alert", {
+      girder.events.trigger("g:alert", {
         icon: "cancel",
-        text: "Could not check files to open in VolView",
+        text: `Could not start the DICOM-RT ${operation} job`,
         type: "danger",
         timeout: 4000,
       });

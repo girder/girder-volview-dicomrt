@@ -1,7 +1,8 @@
-import { wrap } from "@girder/core/utilities/PluginUtils";
-import ItemView from "@girder/core/views/body/ItemView";
 import { importDicomRT, exportDicomRT } from "./dicomRT";
-import { restRequest } from "@girder/core/rest";
+
+const { wrap } = girder.utilities.PluginUtils;
+const { restRequest } = girder.rest;
+const ItemView = girder.views.body.ItemView;
 
 wrap(ItemView, "render", function (render) {
   this.once("g:rendered", function () {
